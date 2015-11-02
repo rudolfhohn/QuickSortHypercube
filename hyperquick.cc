@@ -2,20 +2,78 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
+#include <algorithm>
+#include <math>
+
 using namespace std;
 
 void reunion(int* data1,int taille1,
-             int* data2,int taille2,int* result) {  }
+             int* data2,int taille2,int* result) { 
+    int k = 0;
+
+    // A verifier
+    for (int i = 0; i < taille1; i++) result[k++] = data1[i];
+    for (int i = 0; i < taille2; i++) result[k++] = data2[i];
+
+    sort(result, result+k);    
+}
 
 void partition(int pivot, int* data, int taille,
                int* dataInf,int& taille1,
-               int* dataSup,int& taille2) {  }
+               int* dataSup,int& taille2) {
+    int j = 0;
+    int k = 0;
 
-void exchange(int* data,int& taille,int etape) {  }
+    for (int i = 0; i < taille; i++) {
+        if (data[i] <= pivot)
+            dataInf[k++] = data[i];
+        else
+            dataSup[j++] = data[i];
+    }
+    
+    taille1 = k;
+    taille2 = j;
+}
 
-void diffusion(int pivot,int etape) {  }
+void exchange(int* data,int& taille,int etape) { 
+     
+}
 
-void quickSort(int* data,int& taille) {  }
+void diffusion(int pivot,int etape) {
+    // Il diffuse le pivot selon l'etape ou il est en broadcast
+}
+
+void quickSort(int* data,int& taille) { 
+    int p, myPE;
+    MPI_Comm_size(MPI_COMM_WORLD,&p);
+    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+    // Pretri local
+    sort(data, data + taille);
+
+    // Dimension
+    int d = log2(taille);
+
+    // Tableau de resultat
+    
+
+    for (int i = d; i > 0; i--) {
+        // Choix du pivot
+        int pivot = data[taille / (2 * p)];
+        
+        // Appelle diffusion
+        diffusion(pivot, 0); 
+
+        // Echange de listes
+        int tailleNeighbor;
+        exchange(data, &tailleNeighbor, i);
+        
+        // Reunion de listes
+        int result = new int[taille + tailleNeighbor];
+        // Si le bit i est a 0
+        if (!(myPE & (0x1 << i)))
+            reunion(data, taille, data2, taille2, result);
+    }
+}
 
 void printAll(int* data,int taille) {  
    int p,myPE;

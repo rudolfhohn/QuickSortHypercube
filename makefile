@@ -5,7 +5,7 @@ hyperquick.o: hyperquick.cc
 	mpiCC $^ -o $@
 
 run: hyperquick.o
-	mpirun -np $(P) $^
+	mpirun -np $(P) $^ 17 5
 
 clean:
 	rm -f *.o
