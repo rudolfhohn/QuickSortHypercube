@@ -21,7 +21,7 @@ void reunion(int* data1, int taille1,
     sort(result, result+k);
 }
 
-void partition(int pivot, int* data, int taille,
+void partitionH(int pivot, int* data, int taille,
                int* dataInf,int& taille1,
                int* dataSup,int& taille2) {
     int j = 0;
@@ -49,18 +49,18 @@ void exchange(int* data, int& taille, int etape) {
     MPI_Send(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD);
     if (taille > 0)
         // Send the array to the neighbor
-        MPI_Send(data, taille, MPI_INT, neighbor, 666, MPI_COMM_WORLD);
+        MPI_Send(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD);
 
     // Receive size from the neighbor
     MPI_Recv(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     if (taille > 0)
         // Receive array from the neighbor
-        MPI_Recv(data, taille, MPI_INT, neighbor, 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 }
 
 void diffusion(int pivot, int etape) {
-    // Il diffuse le pivot selon l'etape ou il est en broadcast
+    // Send pivot depending on the etape
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD,&p);
     MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
@@ -76,10 +76,10 @@ void diffusion(int pivot, int etape) {
     for (int k = 0; k < etape - 1; k--) {
         if ((myPE - root) < (0x1 << k))
             // Send the pivot
-            MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 666, MPI_COMM_WORLD);
+            MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 668, MPI_COMM_WORLD);
         else if ((myPE - root) < (0x1 << (k + 1)))
-            // Send the pivot
-            MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << (k + 1)), 666, MPI_COMM_WORLD);
+            // Receive the pivot
+            MPI_Recv(&pivot, 1, MPI_INT, myPE + (0x1 << (k + 1)), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 }
 
@@ -94,24 +94,33 @@ void quickSort(int* data, int& taille) {
     int d = log2(taille);
 
     // Tableau de resultat
+    int* dataInf;
+    int* dataSup;
+    int tailleInf;
+    int tailleSup;
 
 
     for (int i = d; i > 0; i--) {
-        // Choix du pivot
+        // Choose the pivot
         int pivot = data[taille / (2 * p)];
 
-        // Appelle diffusion
-        diffusion(pivot, 0);
+        // Call diffusion
+        diffusion(pivot, i);
 
-        // Echange de listes
-        int tailleNeighbor = 0;
-        exchange(data, tailleNeighbor, i);
+        // Partition
+        partitionH(pivot, data, taille, dataInf, tailleInf, dataSup, tailleSup);
+
+        // Exchange of arrays
+        if (!(myPE & (0x1 << (i - 1))))
+            exchange(dataSup, tailleSup, i);
+        else
+            exchange(dataInf, tailleInf, i);
 
         // Reunion de listes
-        int result = new int[(int *)(taille) + tailleNeighbor];
+        //int result = new int[(int *)(taille) + tailleNeighbor];
         // Si le bit i est a 0
-        if (!(myPE & (0x1 << i)))
-            reunion(data, taille, data2, taille2, result);
+        //if (!(myPE & (0x1 << i)))
+        reunion(dataInf, tailleInf, dataSup, tailleSup, data);
     }
 }
 
