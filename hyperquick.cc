@@ -11,6 +11,7 @@ void reunion(int* data1, int taille1,
              int* data2, int taille2, int* result) {
     int k = 0;
 
+    cout << "reunion" << endl;
     // A verifier
     for (int i = 0; i < taille1; i++)
         result[k++] = data1[i];
@@ -27,6 +28,8 @@ void partitionH(int pivot, int* data, int taille,
     int j = 0;
     int k = 0;
 
+    cout << "partitionH" << endl;
+
     for (int i = 0; i < taille; i++) {
         if (data[i] <= pivot)
             dataInf[k++] = data[i];
@@ -41,6 +44,8 @@ void partitionH(int pivot, int* data, int taille,
 void exchange(int* data, int& taille, int etape) {
     int myPE;
     MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+
+    cout << "exchange by : " << myPE << endl;
 
     // Find the neighbor
     int neighbor = myPE ^ (0x1 << etape);
@@ -64,6 +69,8 @@ void diffusion(int pivot, int etape) {
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD,&p);
     MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+
+    cout << "diffusion by : " << myPE << endl;
 
     // Root is the process of broadcast
     int root;
