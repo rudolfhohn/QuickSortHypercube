@@ -29,16 +29,36 @@ void partitionH(int pivot, int* data, int taille,
     int k = 0;
 
     cout << "partitionH" << endl;
+    cout << "pivot : " << pivot << endl;
+    cout << "taille  : " << taille << endl;
 
     for (int i = 0; i < taille; i++) {
-        if (data[i] <= pivot)
+        cout << "data[" << i << "]" << " = " << data[i] << endl;
+        if (data[i] < pivot) {
+            cout << "inf" << endl;
             dataInf[k++] = data[i];
-        else
+        }
+        else {
+            cout << "sup" << endl;
             dataSup[j++] = data[i];
+        }
+    }
+
+    cout << "pivot : " << pivot << endl;
+    cout << "Tab inf" << endl;
+    for (int i = 0; i < k; i++) {
+        cout << "datainf[" << i << "] = " << dataInf[i] << endl;
+    }
+    cout << "pivot : " << pivot << endl;
+    cout << "Tab sup" << endl;
+    for (int i = 0; i < j; i++) {
+        cout << "datasup[" << i << "] = " << dataSup[i] << endl;
     }
 
     taille1 = k;
     taille2 = j;
+    cout << "taille1  : " << taille1 << endl;
+    cout << "taille2  : " << taille2 << endl;
 }
 
 void exchange(int* data, int& taille, int etape) {
@@ -48,15 +68,18 @@ void exchange(int* data, int& taille, int etape) {
     cout << "exchange by : " << myPE << endl;
 
     // Find the neighbor
-    int neighbor = myPE ^ (0x1 << etape);
+    int neighbor = myPE ^ (0x1 << (etape - 1));
 
     // Send the size to the neighbor
+    cout << "exchange send size : Send by " << neighbor << " : " << myPE << " et etape : " << etape << " size : " << taille << endl;
     MPI_Send(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD);
     if (taille > 0)
         // Send the array to the neighbor
+        cout << "exchange send array : Send by " << neighbor << " : " << myPE << " et etape : " << etape << endl;
         MPI_Send(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD);
 
     // Receive size from the neighbor
+    cout << "Neighbo : Recv by " << neighbor << endl;
     MPI_Recv(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     if (taille > 0)
         // Receive array from the neighbor
@@ -86,10 +109,11 @@ void diffusion(int pivot, int etape) {
             // Send the pivot
             MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 668, MPI_COMM_WORLD);
         }
-        else if ((myPE - root) < (0x1 << (k + 1)))
+        else if ((myPE - root) < (0x1 << (k + 1))) {
             // Receive the pivot
-            cout << "Recv by " << myPE << " : " << (0x1 << (k + 1)) <<  " et etape : " << etape << endl;
-            MPI_Recv(&pivot, 1, MPI_INT, myPE + (0x1 << (k + 1)), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            cout << "Diffusion : Recv by " << myPE - (0x1 << k) <<  " et etape : " << etape << endl;
+            MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << k), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
     }
 }
 
@@ -104,10 +128,10 @@ void quickSort(int* data, int& taille) {
     int d = log2(taille);
 
     // Tableau de resultat
-    int* dataInf;
-    int* dataSup;
-    int tailleInf;
-    int tailleSup;
+    int* dataInf = new int[taille];
+    int* dataSup = new int[taille];
+    int tailleInf = 0;
+    int tailleSup = 0;
 
 
     for (int i = d; i > 0; i--) {
@@ -165,7 +189,7 @@ int main(int argc,char** argv) {
 
   for (int k=0;k<tailleLoc;k++)
       dataLoc[k] = rand()%1000;
-    
+
   printAll(dataLoc,tailleLoc);
 
   quickSort(dataLoc,tailleLoc);
