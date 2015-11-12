@@ -1,10 +1,10 @@
 # P = number of processors
 P=4 
 
-hyperquick.o: hyperquick.cc
+hyperquick: hyperquick.cc
 	mpiCC $^ -o $@
 
-run: hyperquick.o
+run: hyperquick
 	mpirun -np $(P) $^ 17 $(P)
 
 clean:
