@@ -80,12 +80,15 @@ void diffusion(int pivot, int etape) {
         root = ((myPE >> etape) << etape);
 
     // myPE - root = relative index in sub-hypercude of dimension i
-    for (int k = 0; k < etape - 1; k--) {
-        if ((myPE - root) < (0x1 << k))
+    for (int k = 0; k < etape; k++) {
+        if ((myPE - root) < (0x1 << k)) {
+            cout << "Send by " << myPE << " : " << myPE + (0x1 << k) << " et etape : " << etape << endl;
             // Send the pivot
             MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 668, MPI_COMM_WORLD);
+        }
         else if ((myPE - root) < (0x1 << (k + 1)))
             // Receive the pivot
+            cout << "Recv by " << myPE << " : " << (0x1 << (k + 1)) <<  " et etape : " << etape << endl;
             MPI_Recv(&pivot, 1, MPI_INT, myPE + (0x1 << (k + 1)), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 }
@@ -109,7 +112,7 @@ void quickSort(int* data, int& taille) {
 
     for (int i = d; i > 0; i--) {
         // Choose the pivot
-        int pivot = data[taille / (2 * p)];
+        int pivot = data[taille / 2];
 
         // Call diffusion
         diffusion(pivot, i);
@@ -162,6 +165,8 @@ int main(int argc,char** argv) {
 
   for (int k=0;k<tailleLoc;k++)
       dataLoc[k] = rand()%1000;
+    
+  printAll(dataLoc,tailleLoc);
 
   quickSort(dataLoc,tailleLoc);
 
