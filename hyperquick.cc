@@ -118,13 +118,13 @@ void diffusion(int& pivot, int etape) {
     // myPE - root = relative index in sub-hypercube of dimension i
     for (int k = 0; k < etape; k++) {
         if ((myPE - root) < (0x1 << k)) {
-            //cout << "Send by " << myPE << " : " << myPE + (0x1 << k) << " et etape : " << etape << endl;
+            cout << "[diffusion] : I send the pivot : " << pivot << " to my friend : " << myPE + (0x1 << k) << endl;
             // Send the pivot
             MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 668, MPI_COMM_WORLD);
         }
         else if ((myPE - root) < (0x1 << (k + 1))) {
             // Receive the pivot
-            //cout << "Diffusion : Recv by " << myPE - (0x1 << k) <<  " et etape : " << etape << endl;
+            cout << "[diffusion] : I " << myPE << " received a new pivot : " << pivot << " from my friend : " << myPE - (0x1 << k) << endl;
             MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << k), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             //MPI_Recv(&pivot, 1, MPI_INT, MPI_ANY_SOURCE, 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
