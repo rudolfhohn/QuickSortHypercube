@@ -10,14 +10,16 @@ using namespace std;
 
 void reunion(int* data1, int taille1,
              int* data2, int taille2, int*& result, int& taille) {
+    int myPE;
+    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
     int k = 0;
     taille = taille1 + taille2;
 
     delete[] result;
-    cout << "[reunion] new size result : " << taille1 + taille2 << endl;
+    cout << "[reunion " << myPE << "]  new size result : " << taille1 + taille2 << endl;
     result = new int[taille1 + taille2];
 
-    cout << "[reunion] " << endl;
+    // cout << "[reunion " << myPE "]" << endl;
     // A verifier
     for (int i = 0; i < taille1; i++)
         result[k++] = data1[i];
@@ -25,12 +27,20 @@ void reunion(int* data1, int taille1,
     for (int i = 0; i < taille2; i++)
         result[k++] = data2[i];
 
-    sort(result, result + k);
+    cout << "[reunion " << myPE << "] k = " << (taille1+taille2) << endl; 
+    sort(result, result + taille1 + taille2);
+    cout << "[reunion " << myPE << "] result : ";
+    for (int i = 0; i < k; i++) {
+        cout << result[i] << " ";
+    }
+    cout << endl;
 }
 
 void partitionH(int pivot, int* data, int taille,
                int*& dataInf,int& taille1,
                int*& dataSup,int& taille2) {
+    int myPE;
+    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
     int j = 0;
     int k = 0;
 
@@ -124,14 +134,14 @@ void diffusion(int& pivot, int etape) {
         }
         else if ((myPE - root) < (0x1 << (k + 1))) {
             // Receive the pivot
-            cout << "[diffusion] : I " << myPE << " received a new pivot : " << pivot << " from my friend : " << myPE - (0x1 << k) << endl;
             MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << k), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            cout << "[diffusion] : I " << myPE << " received a new pivot : " << pivot << " from my friend : " << myPE - (0x1 << k) << endl;
             //MPI_Recv(&pivot, 1, MPI_INT, MPI_ANY_SOURCE, 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
     }
 }
 
-void quickSort(int* data, int& taille) {
+void quickSort(int*& data, int& taille) {
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD, &p);
     MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
