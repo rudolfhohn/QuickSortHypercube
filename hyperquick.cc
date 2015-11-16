@@ -8,8 +8,11 @@
 using namespace std;
 
 void reunion(int* data1, int taille1,
-             int* data2, int taille2, int* result) {
+             int* data2, int taille2, int*& result) {
     int k = 0;
+
+    delete[] result;
+    result = new int[taille1 + taille2];
 
     cout << "[reunion] " << endl;
     // A verifier
@@ -23,8 +26,8 @@ void reunion(int* data1, int taille1,
 }
 
 void partitionH(int pivot, int* data, int taille,
-               int* dataInf,int& taille1,
-               int* dataSup,int& taille2) {
+               int*& dataInf,int& taille1,
+               int*& dataSup,int& taille2) {
     int j = 0;
     int k = 0;
 
@@ -54,7 +57,7 @@ void partitionH(int pivot, int* data, int taille,
     taille2 = j;
 }
 
-void exchange(int* data, int& taille, int etape) {
+void exchange(int*& data, int& taille, int etape) {
     int myPE;
     MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
 
@@ -74,17 +77,20 @@ void exchange(int* data, int& taille, int etape) {
         MPI_Send(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD);
     }
 
+
     // Receive size from the neighbor
     //cout << "Neighbo : Recv by " << neighbor << endl;
     MPI_Recv(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     if (taille > 0) {
+        delete[] data;
+        data = new int[taille];
         // Receive array from the neighbor
         MPI_Recv(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
 }
 
-void diffusion(int pivot, int etape) {
+void diffusion(int& pivot, int etape) {
     // Send pivot depending on the etape
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD,&p);
@@ -135,6 +141,7 @@ void quickSort(int* data, int& taille) {
     int pivot = 0;
 
     for (int i = d; i > 0; i--) {
+    //for (int i = 1; i <= d; i++) {
         // Choose the pivot
         if (taille != 0) {
             pivot = data[taille / 2];
@@ -161,44 +168,79 @@ void quickSort(int* data, int& taille) {
     }
 }
 
-void printAll(int* data, int taille) {
-   int p, myPE;
-   MPI_Comm_size(MPI_COMM_WORLD, &p);
-   MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
-   int* res;
-
+void printAll(int* data,int taille) {
+   int p,myPE;
+   MPI_Comm_size(MPI_COMM_WORLD,&p);
+   MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+   int *recvcounts, *displs, *recvbuf;
+   if (myPE == 0) recvcounts = new int[p];
+   MPI_Gather(&taille,1,MPI_INT,recvcounts,1,MPI_INT,0,MPI_COMM_WORLD);
+   if (myPE == 0) {
+      displs = new int[p];
+      displs[0] = 0;
+      for (int pe=1;pe<p;pe++) displs[pe] = displs[pe-1]+recvcounts[pe-1];
+   }
+   if (myPE == 0) recvbuf = new int[displs[p-1]+recvcounts[p-1]];
+   MPI_Gatherv(data,taille,MPI_INT,recvbuf,recvcounts,displs,MPI_INT,
+               0,MPI_COMM_WORLD);
    if (myPE == 0)
-       res = new int[p * taille];
-
-   MPI_Gather(data, taille, MPI_INT, res, taille, MPI_INT, 0, MPI_COMM_WORLD);
-
-   if (myPE == 0)
-      for (int k = 0; k < p * taille; k++) cout << res[k] << endl;
-
-   if (myPE == 0) delete res;
+      for (int k=0;k<displs[p-1]+recvcounts[p-1];k++) cout << recvbuf[k] << endl;
+   if (myPE == 0) delete recvbuf,recvcounts,displs;
 }
 
-int main(int argc, char** argv) {
-  MPI_Init(&argc, &argv);
+int main(int argc,char** argv) {
+  MPI_Init(&argc,&argv);
   int myPE;
-  MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
-
-  int seed = atoi(argv[1]) + myPE;
+  MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+  int seed = atoi(argv[1])+myPE;
   srand(seed);
-
   int tailleLoc = atoi(argv[2]); // tailleLoc vaut n/p
-
   int* dataLoc = new int[tailleLoc];
-
-  for (int k = 0; k < tailleLoc; k++)
-      dataLoc[k] = rand() % 1000;
-
-  printAll(dataLoc, tailleLoc);
-
-  quickSort(dataLoc, tailleLoc);
-
-  printAll(dataLoc, tailleLoc);
-
+  for (int k=0;k<tailleLoc;k++) dataLoc[k] = rand()%1000;
+  quickSort(dataLoc,tailleLoc);
+  printAll(dataLoc,tailleLoc);
   MPI_Finalize();
   return 0;
 }
+
+//void printAll(int* data, int taille) {
+//   int p, myPE;
+//   MPI_Comm_size(MPI_COMM_WORLD, &p);
+//   MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
+//   int* res;
+//
+//   if (myPE == 0)
+//       res = new int[p * taille];
+//
+//   MPI_Gather(data, taille, MPI_INT, res, taille, MPI_INT, 0, MPI_COMM_WORLD);
+//
+//   if (myPE == 0)
+//      for (int k = 0; k < p * taille; k++) cout << res[k] << endl;
+//
+//   if (myPE == 0) delete res;
+//}
+//
+//int main(int argc, char** argv) {
+//  MPI_Init(&argc, &argv);
+//  int myPE;
+//  MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
+//
+//  int seed = atoi(argv[1]) + myPE;
+//  srand(seed);
+//
+//  int tailleLoc = atoi(argv[2]); // tailleLoc vaut n/p
+//
+//  int* dataLoc = new int[tailleLoc];
+//
+//  for (int k = 0; k < tailleLoc; k++)
+//      dataLoc[k] = rand() % 1000;
+//
+//  printAll(dataLoc, tailleLoc);
+//
+//  quickSort(dataLoc, tailleLoc);
+//
+//  printAll(dataLoc, tailleLoc);
+//
+//  MPI_Finalize();
+//  return 0;
+//}
