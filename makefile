@@ -1,5 +1,5 @@
 # P = number of processors
-P=4 
+P=4
 
 hyperquick: hyperquick.cc
 	mpiCC $^ -o $@

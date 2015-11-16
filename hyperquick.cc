@@ -1,3 +1,20 @@
+/*
+ * =====================================================================================
+ *
+ *       Filename:  hyperquick.cc
+ *
+ *    Description:  Quicksort in parallele on an hypercube.
+ *
+ *        Version:  1.0
+ *        Created:  11/16/2015 05:38:21 PM
+ *       Revision:  none
+ *       Compiler:  gcc
+ *
+ *         Author:  Axel Fahy, Rudolf Hohn, Jessy Marin
+ *   Organization:  HES-SO hepia section ITI
+ *
+ * =====================================================================================
+ */
 #include "mpi.h"
 #include <iostream>
 #include <cstdlib>
