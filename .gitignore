@@ -35,3 +35,8 @@
 *.swp
 
 hyperquick
+
+# Latex files
+*.aux
+*.log
+*.gz
