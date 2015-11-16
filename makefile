@@ -1,11 +1,11 @@
 # P = number of processors
-P=4 
+P=2 
 
 hyperquick: hyperquick.cc
 	mpiCC $^ -o $@
 
 run: hyperquick
-	mpirun -np $(P) $^ 17 $(P)
+	mpirun -np $(P) $^ 17 20
 
 clean:
 	rm -f *.o

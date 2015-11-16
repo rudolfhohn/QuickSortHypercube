@@ -28,6 +28,21 @@ void partitionH(int pivot, int* data, int taille,
     int j = 0;
     int k = 0;
 
+    delete[] dataInf;
+    delete[] dataSup;
+
+    for (int i = 0; i < taille; i++) {
+        if (data[i] < pivot)
+            k++;
+        else
+            j++;
+    }
+
+    dataInf = new int[k];
+    dataSup = new int[j];
+
+    k = 0;
+    j = 0;
     for (int i = 0; i < taille; i++) {
         if (data[i] < pivot)
             dataInf[k++] = data[i];
@@ -44,7 +59,8 @@ void exchange(int* data, int& taille, int etape) {
     MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
 
     // Find the neighbor
-    int neighbor = myPE ^ (0x1 << (etape - 1));
+    //int neighbor = myPE ^ (0x1 << (etape - 1));
+    int neighbor = myPE ^ (0x1 << etape) - 1;
     //int neighbor = myPE ^ (int)pow(2, etape);
 
     cout << "[exchange] " << "myPE : " << myPE << " / size : " << taille << " / neighbor : " << neighbor << endl;
@@ -110,8 +126,10 @@ void quickSort(int* data, int& taille) {
     cout << "Dimension(d) : " << d << endl;
 
     // Tableau de resultat
-    int* dataInf = new int[taille];
-    int* dataSup = new int[taille];
+    int* dataInf = new int;
+    int* dataSup = new int;
+    //int* dataInf = new int[taille];
+    //int* dataSup = new int[taille];
     int tailleInf;
     int tailleSup;
     int pivot = 0;
