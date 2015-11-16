@@ -8,45 +8,64 @@
 
 using namespace std;
 
+
+/**
+ * @brief Gather values from two arrays and put them into another one (sorted)
+ *
+ * @param data1     first array
+ * @param taille1   size of first array
+ * @param data2     second array
+ * @param taille2   size of second array
+ * @param result    array to store all values
+ * @param taille    size of result (updated)
+ */
 void reunion(int* data1, int taille1,
              int* data2, int taille2, int*& result, int& taille) {
     int myPE;
-    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
+
     int k = 0;
+    // Update the size
     taille = taille1 + taille2;
 
+    // Clear the array and reallocate the memory with the right size
     delete[] result;
-    cout << "[reunion " << myPE << "]  new size result : " << taille1 + taille2 << endl;
-    result = new int[taille1 + taille2];
+    result = new int[taille];
 
-    // cout << "[reunion " << myPE "]" << endl;
-    // A verifier
+    // Get values from data1
     for (int i = 0; i < taille1; i++)
         result[k++] = data1[i];
 
+    // Get values from data2
     for (int i = 0; i < taille2; i++)
         result[k++] = data2[i];
 
-    cout << "[reunion " << myPE << "] k = " << (taille1+taille2) << endl; 
+    cout << "[reunion " << myPE << "] k = " << (taille1+taille2) << endl;
+    // Sort data we just gather
     sort(result, result + taille1 + taille2);
-    cout << "[reunion " << myPE << "] result : ";
-    for (int i = 0; i < k; i++) {
-        cout << result[i] << " ";
-    }
-    cout << endl;
 }
 
+
+/**
+ * @brief Depending on the pivot, dispatch value on data inf / sup
+ *
+ * @param pivot     pivot, value smaller will be in dataInf and higher dataSup
+ * @param data      data with all the values
+ * @param taille    size of data
+ * @param dataInf   array to contain smaller values than the pivot
+ * @param taille1   size of dataInf
+ * @param dataSup   array to contain higher values than the pivot
+ * @param taille2   size of dataSup
+ */
 void partitionH(int pivot, int* data, int taille,
-               int*& dataInf,int& taille1,
-               int*& dataSup,int& taille2) {
+               int*& dataInf, int& taille1,
+               int*& dataSup, int& taille2) {
     int myPE;
     MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
     int j = 0;
     int k = 0;
 
-    delete[] dataInf;
-    delete[] dataSup;
-
+    // Find out the size of arrays (inf / sup)
     for (int i = 0; i < taille; i++) {
         if (data[i] < pivot)
             k++;
@@ -54,13 +73,15 @@ void partitionH(int pivot, int* data, int taille,
             j++;
     }
 
+    // Clear arrays and reallocate with the right size
+    delete[] dataInf;
+    delete[] dataSup;
     dataInf = new int[k];
-    cout << "[partition] new size dataInf : " << k << endl;
     dataSup = new int[j];
-    cout << "[partition] new size dataSup : " << j << endl;
 
     k = 0;
     j = 0;
+    // Puts values in arrays
     for (int i = 0; i < taille; i++) {
         if (data[i] < pivot)
             dataInf[k++] = data[i];
@@ -68,48 +89,61 @@ void partitionH(int pivot, int* data, int taille,
             dataSup[j++] = data[i];
     }
 
+    // Update the sizes
     taille1 = k;
     taille2 = j;
 }
 
+
+/**
+ * @brief Function to exchange two arrays
+ *
+ * Calculate the neighbor,
+ * then send the size and the data.
+ *
+ * Receive the size from the neighbor and then the data.
+ * With the size, we can reallocate the correct size for the data array.
+ *
+ * @param data      data to exchange
+ * @param taille    size of data
+ * @param etape     etape of the algo
+ */
 void exchange(int*& data, int& taille, int etape) {
     int myPE;
-    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
 
     // Find the neighbor
-    //int neighbor = myPE ^ (0x1 << (etape - 1));
     int neighbor = myPE ^ (0x1 << etape - 1);
-    //int neighbor = myPE ^ (int)pow(2, etape);
 
     cout << "[exchange] " << "myPE : " << myPE << " / size : " << taille << " / neighbor : " << neighbor << endl;
 
     // Send the size to the neighbor
-    //cout << "exchange send size : Send by " << neighbor << " : " << myPE << " et etape : " << etape << " size : " << taille << endl;
     MPI_Send(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD);
     if (taille > 0) {
         // Send the array to the neighbor
-        //cout << "exchange send array : Send by " << neighbor << " : " << myPE << " et etape : " << etape << endl;
         MPI_Send(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD);
     }
 
 
     // Receive size from the neighbor
-    //cout << "Neighbo : Recv by " << neighbor << endl;
     MPI_Recv(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     if (taille > 0) {
+        // Clear the data and set the new size
         delete[] data;
-        cout << "[exchange] new size data : " << taille << endl;
         data = new int[taille];
         // Receive array from the neighbor
         MPI_Recv(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    } else {
-        delete[] data;
-        data = new int;
-        cout << "[exchange] : myPE = " << myPE << " - Error size is null" << endl;
     }
 
 }
 
+
+/**
+ * @brief TODO
+ *
+ * @param pivot Pivot to send
+ * @param etape Etape of the algo
+ */
 void diffusion(int& pivot, int etape) {
     // Send pivot depending on the etape
     int p, myPE;
@@ -136,33 +170,38 @@ void diffusion(int& pivot, int etape) {
             // Receive the pivot
             MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << k), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             cout << "[diffusion] : I " << myPE << " received a new pivot : " << pivot << " from my friend : " << myPE - (0x1 << k) << endl;
-            //MPI_Recv(&pivot, 1, MPI_INT, MPI_ANY_SOURCE, 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
     }
 }
 
+
+/**
+ * @brief Quicksort implementation
+ *
+ * @param data      data to sort
+ * @param taille    size of data
+ */
 void quickSort(int*& data, int& taille) {
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD, &p);
     MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
-    // Pretri local
+    // local sort
     sort(data, data + taille);
 
     // Dimension
     int d = log2(p);
     cout << "Dimension(d) : " << d << endl;
 
-    // Tableau de resultat
+    // Array with result
+    // Memory is not allocated yet,
+    // the allocation will be done when we know the size to allocate
     int* dataInf = new int;
     int* dataSup = new int;
-    //int* dataInf = new int[taille];
-    //int* dataSup = new int[taille];
     int tailleInf;
     int tailleSup;
     int pivot = 0;
 
     for (int i = d; i > 0; i--) {
-    //for (int i = 1; i <= d; i++) {
         // Choose the pivot
         if (taille != 0) {
             pivot = data[taille / 2];
@@ -179,101 +218,74 @@ void quickSort(int*& data, int& taille) {
         cout << "[Quicksort] PE : " << myPE << " tailleSup : " << tailleSup << endl;
 
         // Exchange of arrays
-        //if (!(myPE & (0x1 << (i - 1))))
         if (!(myPE >> (i - 1) & 0x1))
             exchange(dataSup, tailleSup, i);
         else
             exchange(dataInf, tailleInf, i);
 
-        // Reunion de listes
-        //int result = new int[(int *)(taille) + tailleNeighbor];
-        // Si le bit i est a 0
-        //if (!(myPE & (0x1 << i)))
         reunion(dataInf, tailleInf, dataSup, tailleSup, data, taille);
     }
 }
 
+
+/**
+ * @brief Print data
+ *
+ * @param data      array to print
+ * @param taille    size of array
+ */
 void printAll(int* data,int taille) {
-    int p,myPE;
-    MPI_Comm_size(MPI_COMM_WORLD,&p);
-    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
+    int p, myPE;
+
+    MPI_Comm_size(MPI_COMM_WORLD, &p);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
+
     int *recvcounts, *displs, *recvbuf;
+
     if (myPE == 0) recvcounts = new int[p];
-    MPI_Gather(&taille,1,MPI_INT,recvcounts,1,MPI_INT,0,MPI_COMM_WORLD);
+
+    MPI_Gather(&taille, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
     if (myPE == 0) {
        displs = new int[p];
        displs[0] = 0;
-       for (int pe=1;pe<p;pe++) displs[pe] = displs[pe-1]+recvcounts[pe-1];
+       for (int pe = 1; pe < p; pe++) displs[pe] = displs[pe - 1] + recvcounts[pe - 1];
     }
-    if (myPE == 0) recvbuf = new int[displs[p-1]+recvcounts[p-1]];
-    MPI_Gatherv(data,taille,MPI_INT,recvbuf,recvcounts,displs,MPI_INT,
+
+    if (myPE == 0) recvbuf = new int[displs[p - 1] + recvcounts[p - 1]];
+
+    MPI_Gatherv(data, taille, MPI_INT, recvbuf, recvcounts, displs, MPI_INT,
                 0,MPI_COMM_WORLD);
+
     if (myPE == 0)
-       for (int k=0;k<displs[p-1]+recvcounts[p-1];k++) cout << recvbuf[k] << endl;
-    if (myPE == 0) delete recvbuf,recvcounts,displs;
+       for (int k = 0; k < displs[p - 1] + recvcounts[p - 1]; k++) cout << recvbuf[k] << endl;
+
+    if (myPE == 0) delete recvbuf, recvcounts, displs;
 }
 
-int main(int argc,char** argv) {
-    MPI_Init(&argc,&argv);
+
+int main(int argc, char** argv) {
+    MPI_Init(&argc, &argv);
+
     int nbPE, myPE;
-    MPI_Comm_size(MPI_COMM_WORLD,&nbPE);
-    MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
-    int seed = atoi(argv[1])+myPE;
+
+    MPI_Comm_size(MPI_COMM_WORLD, &nbPE);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
+
+    int seed = atoi(argv[1]) + myPE;
+
     srand(seed);
+
     int tailleLoc = atoi(argv[2]); // tailleLoc vaut n/p
     int* dataLoc = new int[tailleLoc];
-    for (int k=0;k<tailleLoc;k++) dataLoc[k] = rand()%1000;
-    quickSort(dataLoc,tailleLoc);
-    printAll(dataLoc,tailleLoc);
-    //for (int pe = 0; pe < nbPE; pe++) {
-    //    sleep(myPE);
-    //    for (int i = 0; i < tailleLoc; i++) {
-    //        cout << "[PE] :  " << myPE << " " << dataLoc[i] << " ";
-    //        cout << endl;
-    //    }
-    //}
+
+    for (int k = 0; k < tailleLoc; k++) dataLoc[k] = rand() % 1000;
+
+    quickSort(dataLoc, tailleLoc);
+
+    printAll(dataLoc, tailleLoc);
+
     MPI_Finalize();
     return 0;
 }
 
-//void printAll(int* data, int taille) {
-//   int p, myPE;
-//   MPI_Comm_size(MPI_COMM_WORLD, &p);
-//   MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
-//   int* res;
-//
-//   if (myPE == 0)
-//       res = new int[p * taille];
-//
-//   MPI_Gather(data, taille, MPI_INT, res, taille, MPI_INT, 0, MPI_COMM_WORLD);
-//
-//   if (myPE == 0)
-//      for (int k = 0; k < p * taille; k++) cout << res[k] << endl;
-//
-//   if (myPE == 0) delete res;
-//}
-//
-//int main(int argc, char** argv) {
-//  MPI_Init(&argc, &argv);
-//  int myPE;
-//  MPI_Comm_rank(MPI_COMM_WORLD, &myPE);
-//
-//  int seed = atoi(argv[1]) + myPE;
-//  srand(seed);
-//
-//  int tailleLoc = atoi(argv[2]); // tailleLoc vaut n/p
-//
-//  int* dataLoc = new int[tailleLoc];
-//
-//  for (int k = 0; k < tailleLoc; k++)
-//      dataLoc[k] = rand() % 1000;
-//
-//  printAll(dataLoc, tailleLoc);
-//
-//  quickSort(dataLoc, tailleLoc);
-//
-//  printAll(dataLoc, tailleLoc);
-//
-//  MPI_Finalize();
-//  return 0;
-//}
