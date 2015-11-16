@@ -40,7 +40,6 @@ void reunion(int* data1, int taille1,
     for (int i = 0; i < taille2; i++)
         result[k++] = data2[i];
 
-    cout << "[reunion " << myPE << "] k = " << (taille1+taille2) << endl;
     // Sort data we just gather
     sort(result, result + taille1 + taille2);
 }
@@ -115,13 +114,11 @@ void exchange(int*& data, int& taille, int etape) {
     // Find the neighbor
     int neighbor = myPE ^ (0x1 << etape - 1);
 
-    cout << "[exchange] " << "myPE : " << myPE << " / size : " << taille << " / neighbor : " << neighbor << endl;
-
     // Send the size to the neighbor
     MPI_Send(&taille, 1, MPI_INT, neighbor, 666, MPI_COMM_WORLD);
     if (taille > 0) {
         // Send the array to the neighbor
-        MPI_Send(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD);
+        MPI_Send(data, taille, MPI_INT, neighbor, 666, MPI_COMM_WORLD);
     }
 
 
@@ -132,14 +129,14 @@ void exchange(int*& data, int& taille, int etape) {
         delete[] data;
         data = new int[taille];
         // Receive array from the neighbor
-        MPI_Recv(data, taille, MPI_INT, neighbor, 667, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(data, taille, MPI_INT, neighbor, 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
 }
 
 
 /**
- * @brief TODO
+ * @brief Send pivot to each neighbor in the same sub-hypercube
  *
  * @param pivot Pivot to send
  * @param etape Etape of the algo
@@ -149,8 +146,6 @@ void diffusion(int& pivot, int etape) {
     int p, myPE;
     MPI_Comm_size(MPI_COMM_WORLD,&p);
     MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
-
-    cout << "[diffusion] : " << "myPE : " << myPE << " / etape : " << etape << endl;
 
     // Root is the process of broadcast
     int root;
@@ -162,14 +157,12 @@ void diffusion(int& pivot, int etape) {
     // myPE - root = relative index in sub-hypercube of dimension i
     for (int k = 0; k < etape; k++) {
         if ((myPE - root) < (0x1 << k)) {
-            cout << "[diffusion] : I send the pivot : " << pivot << " to my friend : " << myPE + (0x1 << k) << endl;
             // Send the pivot
-            MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 668, MPI_COMM_WORLD);
+            MPI_Send(&pivot, 1, MPI_INT, myPE + (0x1 << k), 666, MPI_COMM_WORLD);
         }
         else if ((myPE - root) < (0x1 << (k + 1))) {
             // Receive the pivot
-            MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << k), 668, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            cout << "[diffusion] : I " << myPE << " received a new pivot : " << pivot << " from my friend : " << myPE - (0x1 << k) << endl;
+            MPI_Recv(&pivot, 1, MPI_INT, myPE - (0x1 << k), 666, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
     }
 }
@@ -190,7 +183,6 @@ void quickSort(int*& data, int& taille) {
 
     // Dimension
     int d = log2(p);
-    cout << "Dimension(d) : " << d << endl;
 
     // Array with result
     // Memory is not allocated yet,
@@ -205,7 +197,6 @@ void quickSort(int*& data, int& taille) {
         // Choose the pivot
         if (taille != 0) {
             pivot = data[taille / 2];
-            cout << "Pivot[" << i << "] = " << pivot << endl;
         }
 
         // Call diffusion
@@ -213,9 +204,6 @@ void quickSort(int*& data, int& taille) {
 
         // Partition
         partitionH(pivot, data, taille, dataInf, tailleInf, dataSup, tailleSup);
-
-        cout << "[Quicksort] PE : " << myPE << " tailleInf : " << tailleInf << endl;
-        cout << "[Quicksort] PE : " << myPE << " tailleSup : " << tailleSup << endl;
 
         // Exchange of arrays
         if (!(myPE >> (i - 1) & 0x1))
